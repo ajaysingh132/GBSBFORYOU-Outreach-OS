@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GBSBFORYOU Outreach OS</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f4f6f8;color:#17202a}
+header{background:#17365d;color:#fff;padding:20px}
+main{max-width:900px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 10px #0001}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+button{border:0;border-radius:9px;padding:12px 16px;margin:5px;cursor:pointer;background:#17365d;color:#fff}
+input,textarea{width:100%;box-sizing:border-box;padding:11px;margin:6px 0;border:1px solid #ccd3da;border-radius:8px}
+.small{color:#5f6b76;font-size:14px;line-height:1.5}
+.ok{background:#eaf7ee;padding:12px;border-radius:9px}
+.warn{background:#fff5d6;padding:12px;border-radius:9px}
+</style>
+</head>
+<body>
+<header>
+<h1>GBSBFORYOU Outreach OS</h1>
+<div>Permanent Parliamentary & Media Outreach System — Chrome Starter</div>
+</header>
+<main>
+<div class="card">
+<h2>सिस्टम सफलतापूर्वक Chrome में खुल गया है</h2>
+<div class="ok">यह Chrome वाला संस्करण local dashboard है। वास्तविक Gmail delivery के लिए इसे Google Sheets + Apps Script से जोड़ना होगा।</div>
+</div>
+
+<div class="grid">
+<div class="card"><h3>Contacts</h3><p id="contacts">0</p><button onclick="addContact()">नया Contact</button></div>
+<div class="card"><h3>Campaigns</h3><p id="campaigns">0</p><button onclick="newCampaign()">नई Campaign</button></div>
+<div class="card"><h3>Letters</h3><p id="letters">0</p><button onclick="newLetter()">नया Letter</button></div>
+<div class="card"><h3>Delivery Log</h3><p id="logs">0</p><button onclick="showLog()">Log देखें</button></div>
+</div>
+
+<div class="card">
+<h2>Quick Setup</h2>
+<ol>
+<li>ऊपर के ZIP को extract करें।</li>
+<li><b>index.html</b> को Chrome में खोलें।</li>
+<li>फिर Google Sheet बनाकर Apps Script में <b>Code.gs</b> और Apps Script वाला <b>Index.html</b> लगाएँ।</li>
+<li>Initialize System चलाएँ।</li>
+<li>Contacts में official public emails डालें।</li>
+<li>पहले Drafts बनाकर जाँचें, फिर Send करें।</li>
+</ol>
+<div class="warn"><b>महत्वपूर्ण:</b> केवल local HTML खोलने से Gmail को ईमेल भेजने की अनुमति नहीं मिलती। सुरक्षित mail delivery Google Apps Script के माध्यम से होगी।</div>
+</div>
+
+<div class="card">
+<h2>पत्र का Quick Draft</h2>
+<input id="name" placeholder="प्राप्तकर्ता का नाम">
+<input id="email" placeholder="ईमेल">
+<input id="subject" value="आपणलोक भारत रा लोकां तरफसे खुलो पत्र">
+<textarea id="body" rows="8" placeholder="पत्र का पाठ"></textarea>
+<button onclick="saveDraft()">Draft स्थानीय रूप से सेव करें</button>
+<button onclick="exportCSV()">Contacts CSV निर्यात</button>
+</div>
+
+<div class="card" id="output"></div>
+</main>
+
+<script>
+const key='gbsbf_outreach_v1';
+let state=JSON.parse(localStorage.getItem(key)||'{"contacts":[],"campaigns":[],"letters":[],"logs":[]}');
+function save(){localStorage.setItem(key,JSON.stringify(state));render();}
+function render(){
+ document.getElementById('contacts').textContent=state.contacts.length;
+ document.getElementById('campaigns').textContent=state.campaigns.length;
+ document.getElementById('letters').textContent=state.letters.length;
+ document.getElementById('logs').textContent=state.logs.length;
+}
+function addContact(){
+ const n=prompt('नाम'); if(!n)return;
+ const e=prompt('ईमेल'); if(!e)return;
+ state.contacts.push({name:n,email:e,status:'READY'}); save();
+}
+function newCampaign(){state.campaigns.push({date:new Date().toISOString(),name:'Open Letter Campaign'});save();}
+function newLetter(){state.letters.push({date:new Date().toISOString(),title:'Gor Boli Open Letter'});save();}
+function saveDraft(){
+ state.letters.push({date:new Date().toISOString(),title:document.getElementById('subject').value,
+ name:document.getElementById('name').value,email:document.getElementById('email').value,
+ body:document.getElementById('body').value,status:'DRAFT'});
+ save(); alert('Draft स्थानीय रूप से सेव हो गया।');
+}
+function showLog(){
+ document.getElementById('output').innerHTML='<h3>Delivery Log</h3>'+
+ (state.logs.length?state.logs.map(x=>'<p>'+x.date+' — '+x.email+' — '+x.status+'</p>').join(''):'<p>अभी कोई delivery नहीं।');
+}
+function exportCSV(){
+ let csv='Name,Email,Status\\n'+state.contacts.map(x=>`"${x.name}","${x.email}","${x.status}"`).join('\\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+ a.download='GBSBFORYOU_Contacts.csv';a.click();
+}
+render();
+</script>
+</body>
+</html>
