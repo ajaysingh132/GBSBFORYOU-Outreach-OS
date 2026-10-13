@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#4d1720">
+<title>GBSBFORYOU AI Mail Office — Import Lab</title>
+<style>
+:root{--maroon:#7a2430;--dark:#4d1720;--gold:#d9a441;--green:#245b45;--paper:#fff8e8;--ink:#263238;--muted:#667085;--line:#e7dcc4}
+*{box-sizing:border-box}body{margin:0;background:#f7f3eb;color:var(--ink);font:15px system-ui,-apple-system,"Segoe UI",sans-serif}header{background:linear-gradient(120deg,var(--dark),var(--maroon));color:white;padding:20px 16px}header h1{font-size:1.25rem;margin:0 0 5px}header p{margin:0;color:#f4dfb2}.wrap{max-width:1000px;margin:auto;padding:14px}.notice{background:#fff0cb;border:1px solid #e7c56b;border-radius:12px;padding:12px;margin-bottom:14px}.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}.drop{border:2px dashed #b8a57e;border-radius:12px;padding:22px;text-align:center;background:#fffdf7}.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:650;cursor:pointer;background:var(--maroon);color:white}.btn.alt{background:var(--green)}input,select{font:inherit;padding:10px;border:1px solid #d5c7aa;border-radius:9px;max-width:100%}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar input{flex:1;min-width:170px}.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat{background:#fff8e8;border:1px solid var(--line);border-radius:10px;padding:10px}.stat b{display:block;font-size:1.2rem;color:var(--maroon)}.stat span{font-size:.8rem;color:var(--muted)}.message{border-bottom:1px solid var(--line);padding:12px 0}.message:last-child{border:0}.message h3{font-size:.95rem;margin:4px 0}.meta{font-size:.8rem;color:var(--muted)}.body{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem;max-height:180px;overflow:auto;margin-top:8px}.hidden{display:none!important}.status{font-size:.9rem;margin-top:10px}.warn{color:#7a2430}footer{text-align:center;color:var(--muted);font-size:.8rem;padding:18px}@media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
+</style></head>
+<body>
+<header><h1>✉️ GBSBFORYOU AI Mail Office</h1><p>Banjara Academic • Email Import Lab</p></header>
+<main class="wrap">
+<div class="notice"><b>सुरक्षा और स्थिति:</b> यह स्थानीय ब्राउज़र प्रोटोटाइप है। चुनी गई फाइल इस पेज से किसी सर्वर पर अपलोड नहीं होती। अभी MBOX और EML की बुनियादी parsing/preview है; ZIP, बड़े मेलबॉक्स, अटैचमेंट extraction, सुरक्षित स्थायी भंडारण और AI विश्लेषण अभी लागू नहीं हैं। संवेदनशील ईमेल के साथ उत्पादन सेवा की तरह इसका उपयोग न करें।</div>
+<section class="panel"><h2>1. अपनी ईमेल एक्सपोर्ट फाइल चुनें</h2><p>Gmail Takeout से आम तौर पर ZIP के भीतर MBOX फाइल मिलती है। पहले ZIP को अपने फोन/डिवाइस पर extract करके MBOX चुनें। एकल EML फाइल भी चुनी जा सकती है।</p>
+<div class="drop"><p><b>MBOX या EML फाइल चुनें</b></p><input id="file" type="file" accept=".mbox,.eml,.txt,message/rfc822"><p><button class="btn" id="parse">फाइल पढ़ें और प्रीव्यू बनाएँ</button></p><div id="status" class="status" aria-live="polite"></div></div></section>
+<section id="results" class="panel hidden"><h2>2. आयात प्रीव्यू</h2><div class="stats"><div class="stat"><b id="total">0</b><span>पार्स किए संदेश</span></div><div class="stat"><b id="withDate">0</b><span>तारीख उपलब्ध</span></div><div class="stat"><b id="withAttach">0</b><span>अटैचमेंट संकेत</span></div><div class="stat"><b id="fromCount">0</b><span>अलग प्रेषक</span></div></div>
+<div class="toolbar"><input id="search" placeholder="प्रेषक, विषय या संदेश में खोजें…"><select id="dateFilter"><option value="all">सभी तारीखें</option><option value="year">पिछले 12 महीने</option><option value="old">12 महीने से पुराने</option></select></div><div id="list"></div><button class="btn alt" id="exportReport">प्रीव्यू रिपोर्ट डाउनलोड करें (JSON)</button><p class="meta">यह रिपोर्ट केवल parsed preview metadata/content का JSON निर्यात करती है। अभी डेटाबेस में स्थायी आयात नहीं होता।</p></section>
+</main><footer>GBSBFORYOU • Banjara Academic • Local-only prototype</footer>
+<script>
+let messages=[];
+const $=id=>document.getElementById(id);
+function decodeHeader(v){return (v||"").replace(/\?=\s*$/,"").trim()}
+function parseOne(raw){
+ const sep=raw.search(/\r?\n\r?\n/);const head=sep>=0?raw.slice(0,sep):raw;const body=sep>=0?raw.slice(sep).replace(/^\r?\n\r?\n/,""):"";
+ const get=n=>{const re=new RegExp("^"+n.replace(/[.*+?^$\{\}()|[\]\\]/g,"\\$&")+":[^\\r\\n]*(?:\\r?\\n[ \\t][^\\r\\n]*)*","im");const m=head.match(re);return m?m[0].replace(new RegExp("^"+n+":","i"),"").replace(/\r?\n[ \t]/g," ").trim():""};
+ const from=get("From"),to=get("To"),subject=get("Subject"),date=get("Date"),messageId=get("Message-ID");
+ return {from:decodeHeader(from),to:decodeHeader(to),subject:decodeHeader(subject)||"(विषय नहीं)",date:date,ts:Date.parse(date)||0,messageId:messageId,body:body.replace(/\r\n/g,"\n").slice(0,12000),attachmentHint:/content-disposition:\s*attachment/i.test(raw),rawLength:raw.length};
+}
+function parseMbox(raw){const chunks=raw.split(/(?=^From .+\r?\n)/m).filter(s=>s.trim());return chunks.map(s=>parseOne(s.replace(/^From .+\r?\n/,""))).filter(m=>m.from||m.subject!=="(विषय नहीं)"||m.body)}
+function render(){
+ const q=$("search").value.toLowerCase(),mode=$("dateFilter").value,now=Date.now(),year=365*24*60*60*1000;
+ const items=messages.filter(m=>[m.from,m.to,m.subject,m.body,m.date].join(" ").toLowerCase().includes(q)&&(mode==="all"||(mode==="year"&&m.ts&&now-m.ts<=year)||(mode==="old"&&m.ts&&now-m.ts>year)));
+ $("list").innerHTML=items.slice(0,250).map((m,i)=>'<article class="message"><div class="meta">'+esc(m.from||"प्रेषक अज्ञात")+' · '+esc(m.date||"तारीख उपलब्ध नहीं")+(m.attachmentHint?' · 📎 अटैचमेंट संकेत':'')+'</div><h3>'+esc(m.subject)+'</h3><div class="meta">प्रति: '+esc(m.to||"जानकारी उपलब्ध नहीं")+'</div><details><summary>संदेश का अंश देखें</summary><div class="body">'+esc(m.body.slice(0,3500))+'</div></details></article>').join("")||'<p>इस खोज के लिए कोई संदेश नहीं मिला।</p>';
+ if(items.length>250)$("list").insertAdjacentHTML("beforeend",'<p class="meta">सुरक्षा/प्रदर्शन के लिए इस स्क्रीन पर पहले 250 परिणाम दिखाए गए हैं। कुल मिलान: '+items.length+'</p>');
+}
+function esc(s){return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+$("parse").onclick=async()=>{
+ const f=$("file").files[0];if(!f){$("status").textContent="पहले MBOX या EML फाइल चुनें।";return}
+ if(f.size>100*1024*1024){$("status").textContent="यह प्रोटोटाइप 100 MB से बड़ी फाइल नहीं पढ़ेगा। छोटी फाइल या विभाजित एक्सपोर्ट इस्तेमाल करें।";return}
+ $("status").textContent="फाइल स्थानीय ब्राउज़र में पढ़ी जा रही है…";
+ try{const raw=await f.text();messages=/\.eml$/i.test(f.name)?[parseOne(raw)]:parseMbox(raw);
+ $("total").textContent=messages.length;$("withDate").textContent=messages.filter(m=>m.ts).length;$("withAttach").textContent=messages.filter(m=>m.attachmentHint).length;$("fromCount").textContent=new Set(messages.map(m=>m.from).filter(Boolean)).size;
+ $("results").classList.remove("hidden");$("status").textContent="प्रीव्यू तैयार। फाइल इस पेज से किसी सर्वर पर अपलोड नहीं हुई।";render();
+ }catch(e){$("status").textContent="फाइल पढ़ी नहीं जा सकी। यह फॉर्मेट समर्थित नहीं हो सकता।"}
+};
+$("search").addEventListener("input",render);$("dateFilter").addEventListener("change",render);
+$("exportReport").onclick=()=>{const blob=new Blob([JSON.stringify({format:"GBSBFORYOU-local-preview-v1",count:messages.length,generatedAt:new Date().toISOString(),messages},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gbsbforyou-mail-preview.json";a.click();URL.revokeObjectURL(a.href)};
+</script></body></html>
